@@ -48,10 +48,13 @@ class SteganographyEncoder:
                     else:
                         print("Byte", counter, "(", binaryMessageString[counter],")")
                         if(binaryMessageString[counter]=='1'):    # todo - does it work?
-                            a = self.image[i,j,color].astype(int)
-                            a = a | 1
-                            self.image[i,j,color] = a
                             print(self.image[i,j,color])
+                            a = self.image[i,j,color].astype(int)   # ovdje ispravit
+                            print(format(a, '0{}b'.format(8)))
+                            a = a | 1
+                            print(format(a, '0{}b'.format(8)))
+                            self.image[i,j,color] = a
+                            #print(format(self.image[i,j,color], '0{}b'.format(8)))
                         else:
                             a = self.image[i,j,color].astype(int)
                             a = a & ~1
