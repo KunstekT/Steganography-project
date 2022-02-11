@@ -11,7 +11,7 @@
     <OutputPath>.</OutputPath>
     <Name>Steganography-project</Name>
     <RootNamespace>Steganography-project</RootNamespace>
-    <InterpreterId>Global|VisualStudio|spyder-env</InterpreterId>
+    <InterpreterId>Global|PythonCore|3.7</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,8 +25,7 @@
     <Compile Include="Steganography_project.py" />
   </ItemGroup>
   <ItemGroup>
-    <InterpreterReference Include="CondaEnv|CondaEnv|spyder-env" />
-    <InterpreterReference Include="Global|VisualStudio|spyder-env" />
+    <InterpreterReference Include="Global|PythonCore|3.7" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

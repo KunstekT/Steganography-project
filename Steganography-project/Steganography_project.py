@@ -89,8 +89,9 @@ class SteganographyEncoder:
                                 colorName = "green"
                             if(color == 2):
                                 colorName = "blue"
+                            print("\n~~~~~ Steganography Encoder ~~~~~")
                             print("Message \""+ message +"\" encoded (last encoded pixel color: "+colorName +")")
-                            print("")
+                            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
                     else:
                         #print("Byte", counter, "(", binaryMessageString[counter],")")
                         if(binaryMessageString[counter]=='1'):
@@ -174,10 +175,10 @@ class SteganographyDecoder:
                     break;
                 else:
                     hiddenMessage = hiddenMessage + c
-
+        print("\n~~~~~ Steganography Decoder ~~~~~")
         print("Decoded message (characters): ")
-        print(hiddenMessage)
-        print("")  
+        print(hiddenMessage)  
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 class Steganalyzer:
 
@@ -251,7 +252,6 @@ class Steganalyzer:
             if((values[i]+values[i+1]) != 0):
                 avg=(values[i]+values[i+1])/2
             PairValuesAverages.append(avg)
-        print("PairValuesAverages len: ", len(PairValuesAverages))
         return PairValuesAverages
 
     def getPairValuesAverages3(self, values):
@@ -260,11 +260,8 @@ class Steganalyzer:
         avg = 0
         for i in range(len(values)-1):
             if(i%2==0):
-                avg = 0
-                if((values[i]+values[i+1]) != 0):
-                    avg=(values[i]+values[i+1])/2
+                avg=(values[i]+values[i+1])/2
                 PairValuesAverages.append(avg)
-        print("PairValuesAverages len: ", len(PairValuesAverages))
         return PairValuesAverages
         
         #???
@@ -317,17 +314,39 @@ class Steganalyzer:
         return histogram_R, bin_edges, histogramPairValues, e, OddIndexes
     
     def ChiSquareTest(self, observed, expected):
+
+        print("\n---- chisquare ----")
+        print("Observed sum: ", np.sum(observed))
+        print("Expected sum: ", np.sum(expected))
+
+        diff = np.sum(observed) - np.sum(expected)
+        print("Diff: ", diff)
+
+        if(diff<0):
+            diff = -diff
+            observed[127] = observed[127] + diff;
+        elif(diff>0):
+            expected[127] = expected[127] + diff;
+
+        print("New observed sum: ", np.sum(observed))
+        print("New expected sum: ", np.sum(expected))
+
         #try:
         chi, p = sp.stats.chisquare(observed, f_exp=expected)            
         print("ChiSquare test: p = ", p)
         #except:
-        #    print("Chisquare ValueError...")
-        ## ValueError: For each axis slice, the sum of the observed frequencies must agree
-        ## with the sum of the expected frequencies to a relative tolerance of 1e-08, but the percent differences are:
+        #    print("ValueError (chi-square); check observed and expected sums")
+
+        print("---- --------- ----")
+
+
+
 
         #pair of values analysis
     def Analyze(self):
+        print("\n~~~~~ Steganalyzer ~~~~~")
         print("Commencing analysis...")  
+
         histogram_R, bin_edges, histogramPairValues, e, OddIndexes = self.AnalyzeImage(self.image)
 
         #histogram_R, bin_edges = self.getHistogram(self.image, 0)
@@ -336,49 +355,24 @@ class Steganalyzer:
         #e = self.getPairValuesAverages3(histogram_R)
         #OddIndexes = self.getOddIndexElements(histogram_R)
 
-        print("- histogram_R -----------")
+        print("\n--------------------------")
+        print("\n- histogram_R -----------")
         print(histogram_R[:])
-        print("- histogramPairValues -----------")
-        print(histogramPairValues[:])
-        print("- e -----------")
+        #print("- histogramPairValues -----------")
+        #print(histogramPairValues[:])
+        print("\n- e -----------")
         print(e[:])
-        print("- OddIndexes -----------")
+        print("\n- OddIndexes -----------")
         print(OddIndexes[:])
-        print("-----------")
+        print("--------------------------")
 
         self.ChiSquareTest(e, OddIndexes)
 
-        #print("len OddIndexAverages: ", len(OddIndexAverages))
-        #print(OddIndexAverages)
-        #print("len e: ", len(e))
-        #print(e)
-        
-        #histogram_R_unmodified, bin_edges_unmodified = self.getHistogram(self.unmodifiedImage, 0)
-        #histogramPairValues_unmodified = self.getHistogramPairValues(histogram_R_unmodified)
-        #e_unmodified = self.getPairValuesAverages(histogramPairValues_unmodified)
-        #OddIndexAverages_unmodified = self.getOddPairElements(histogramPairValues_unmodified)
-
-
-
         #self.printComparisionTable(OddIndexAverages, e, OddIndexAverages_unmodified, e_unmodified)
-
-        observed=np.array(e[:])
-        expected=np.array(OddIndexes[:])
-                
-        print("- histogram_R -----------")
-        print(histogram_R)
-        print("- histogramPairValues -----------")
-        print(histogramPairValues)
-        print("- e -----------")
-        print(e[:])
-        print("- OddIndexAverages -----------")
-        print(OddIndexes[:])
-        print("-----------")
-
-
         #self.compareHistograms(histogram_R, histogram_R_unmodified, bin_edges, bin_edges_unmodified, "red", "black")
+
         plt.show()
-        
+        print("~~~~~~~~~~~~~~~~~~~~~~~~")       
  
 
 
@@ -388,7 +382,7 @@ messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
 #messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit. Nam in dolor ac metus sodales tincidunt. Integer venenatis urna ligula, et mattis mauris aliquam quis. Donec sit amet nulla vel orci faucibus luctus. Pellentesque commodo nisi dolor, ut egestas elit venenatis ac. Aenean in felis viverra, interdum magna id, consectetur magna. Nullam mollis tincidunt nisi, sed blandit dui bibendum vitae. In suscipit, nisi sed gravida malesuada, nibh libero maximus dolor, non eleifend nisl elit a nisi. Praesent ac luctus tellus. Quisque imperdiet purus eget maximus feugiat. Curabitur sollicitudin rhoncus finibus. Aliquam vehicula tincidunt enim, in rutrum ipsum cursus ac. Nulla gravida dui eget augue fringilla, mollis gravida metus euismod. Donec vitae sapien non arcu viverra euismod. Nam dapibus ultricies leo sed mollis. Donec cursus risus arcu, sit amet faucibus leo pulvinar vitae. Nam commodo volutpat porttitor. Ut convallis hendrerit sapien, in laoreet justo rutrum sed. Duis a ligula et diam consectetur lacinia sagittis quis ipsum. Integer accumsan dolor urna, sed suscipit risus pharetra sed. Nullam cursus libero sed elit aliquet aliquet. Praesent non elementum ligula. Aenean in libero at odio tristique vulputate nec sed augue. Ut tellus enim, consequat eget hendrerit non, sagittis vel turpis. Aliquam ullamcorper rhoncus fermentum. In commodo sodales nibh et rhoncus. Maecenas at diam vestibulum arcu molestie rhoncus quis sed nunc. Aliquam blandit faucibus erat, et pulvinar neque suscipit at. Pellentesque erat elit, pellentesque id pharetra sed, laoreet non risus. Donec auctor euismod fringilla. Curabitur dapibus elit sollicitudin eros finibus feugiat et vehicula lectus. Nunc feugiat risus et tristique bibendum. Etiam porttitor, massa sed laoreet porttitor, nibh arcu vehicula felis, faucibus semper dolor augue non felis. Sed et diam fringilla, viverra ante vel, interdum tortor. Cras semper ipsum non purus tincidunt accumsan. Integer dui magna, feugiat at rutrum a, rhoncus sed nunc. In hac habitasse platea dictumst."
 
 encoder = SteganographyEncoder()
-encoder.loadImage("images/arbismall.png")
+encoder.loadImage("images/forest_small.png")
 encoder.encodeMessage(messageToEncode)
 encoder.saveImage("images/saved.png")
 
