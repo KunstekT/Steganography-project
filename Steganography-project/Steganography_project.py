@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import cv2 as cv
 import scipy as sp
+import math
 from scipy import stats
 
 
@@ -106,8 +107,6 @@ class SteganographyEncoder:
                             a = a & ~1
                             #self.printByte(a)
                             self.encodedImage[i,j,color] = a
-            #    print("ROW:", i)
-            #print("COLOR:", color)
         
 class SteganographyDecoder:
 
@@ -201,7 +200,10 @@ class Steganalyzer:
 
     def getHistogram(self, image, color_channel_id):
         plt.xlim([0, 256])
+        print("color_channel_id: ", color_channel_id)
         histogram, bin_edges = np.histogram(image[:, :, color_channel_id], bins=256, range=(0, 256))
+        print("Hist: ")
+        print(histogram)
         return histogram, bin_edges
 
     def showHistogram(self, histogram, bin_edges, color):
@@ -234,27 +236,7 @@ class Steganalyzer:
                 histogramPairValues.append(vectorpairvalue)
         return histogramPairValues
 
-    def getPairValuesAverages(self, pairValues):
-        PairValuesAverages = list()
-        for pair in pairValues:
-            avg = 0
-            if((pair[0]+pair[1]) != 0):
-                avg=(pair[0]+pair[1])/2
-            PairValuesAverages.append(avg)
-        return PairValuesAverages
-
-    def getPairValuesAverages2(self, values):
-        PairValuesAverages = list()
-        i = 0
-        avg = 0
-        for i in range(len(values)-1):
-            avg = 0
-            if((values[i]+values[i+1]) != 0):
-                avg=(values[i]+values[i+1])/2
-            PairValuesAverages.append(avg)
-        return PairValuesAverages
-
-    def getPairValuesAverages3(self, values):
+    def getPairValuesAverages(self, values):
         PairValuesAverages = list()
         i = 0
         avg = 0
@@ -263,22 +245,6 @@ class Steganalyzer:
                 avg=(values[i]+values[i+1])/2
                 PairValuesAverages.append(avg)
         return PairValuesAverages
-        
-        #???
-    def getOddPairElements(self, elements):
-        OddPairElements = []
-        i=0
-        #print("elements")
-        #print(elements)
-        pair = []
-        x=0
-        for i in range(len(elements)):
-            pair = elements[i]
-            #print("getOddPairElements Pair: ", pair)
-            x = pair[1]
-            #print("getOddPairElements x: ", x)
-            OddPairElements.append(x)
-        return OddPairElements
 
     def getOddIndexElements(self, elements):
         oddIndexElements = []
@@ -303,15 +269,20 @@ class Steganalyzer:
             for i in range(len(e)):
                 print("["+ str(i) +"]: Odd: "+ str(OddIndexAverages[i]) +", e: "+  str(e[i]))
 
-    def AnalyzeImage(self, values):
-        print("Commencing single image analysis...")  
-        histogram_R, bin_edges = self.getHistogram(values, 0)
-        histogramPairValues = self.getHistogramPairValues(histogram_R)
-        #e = self.getPairValuesAverages(histogramPairValues)
-        e = self.getPairValuesAverages3(histogram_R)
-        OddIndexes = self.getOddIndexElements(histogram_R)
+    def AnalyzeImage(self, values, color):
+        c=0
+        if(color == 0 or color == 1 or color == 2):
+            c=color
+        else:
+            print("AnalyzeImage warning: wrong color channel input, channel 0 taken")
 
-        return histogram_R, bin_edges, histogramPairValues, e, OddIndexes
+        print("\n\nCommencing single image analysis...color: ", color, ", ", c)  
+        histogramData, bin_edges = self.getHistogram(values, c)
+        histogramPairValues = self.getHistogramPairValues(histogramData)
+        e = self.getPairValuesAverages(histogramData)
+        OddIndexes = self.getOddIndexElements(histogramData)
+
+        return histogramData, bin_edges, histogramPairValues, e, OddIndexes
     
     def ChiSquareTest(self, observed, expected):
 
@@ -331,58 +302,117 @@ class Steganalyzer:
         print("New observed sum: ", np.sum(observed))
         print("New expected sum: ", np.sum(expected))
 
+        observed2 = []
+        expected2 = []
+
+        for x in range(len(expected)-1):
+            observed2.append(observed[x])
+            expected2.append(expected[x])
+
+        for x in reversed(range(len(expected)-1)):
+            if(expected[x] == 0):
+                observed2.pop(x)
+                expected2.pop(x)
+
+        print("Observed2 sum: ", np.sum(observed2))
+        print("Expected2 sum: ", np.sum(expected2))
+
+        diff = np.sum(observed2) - np.sum(expected2)
+        print("Diff: ", diff)
+        if(diff<0):
+            diff = -diff
+            observed2[len(observed2)-1] = observed2[len(observed2)-1] + diff;
+        elif(diff>0):
+            expected2[len(expected2)-1] = expected2[len(expected2)-1] + diff;
+
+        print("New observed2 sum: ", np.sum(observed2))
+        print("New expected2 sum: ", np.sum(expected2))
+
         #try:
-        chi, p = sp.stats.chisquare(observed, f_exp=expected)            
+        chi, p = sp.stats.chisquare(observed2, expected2, 0)            
         print("ChiSquare test: p = ", p)
         #except:
         #    print("ValueError (chi-square); check observed and expected sums")
 
         print("---- --------- ----")
+        return p
 
-
-
-
-        #pair of values analysis
-    def Analyze(self):
-        print("\n~~~~~ Steganalyzer ~~~~~")
-        print("Commencing analysis...")  
-
-        histogram_R, bin_edges, histogramPairValues, e, OddIndexes = self.AnalyzeImage(self.image)
-
-        #histogram_R, bin_edges = self.getHistogram(self.image, 0)
-        #histogramPairValues = self.getHistogramPairValues(histogram_R)
-        ##e = self.getPairValuesAverages(histogramPairValues)
-        #e = self.getPairValuesAverages3(histogram_R)
-        #OddIndexes = self.getOddIndexElements(histogram_R)
-
+    def PrintHistogramValues(self, histogram, e, OddIndexes):
         print("\n--------------------------")
-        print("\n- histogram_R -----------")
-        print(histogram_R[:])
-        #print("- histogramPairValues -----------")
-        #print(histogramPairValues[:])
+        print("\n- histogram -----------")
+        print(histogram[:])
         print("\n- e -----------")
         print(e[:])
         print("\n- OddIndexes -----------")
         print(OddIndexes[:])
         print("--------------------------")
 
-        self.ChiSquareTest(e, OddIndexes)
+        #pair of values analysis
+    def Analyze(self):
+        print("\n~~~~~ Steganalyzer ~~~~~")
+        print("Commencing analysis...")  
 
-        #self.printComparisionTable(OddIndexAverages, e, OddIndexAverages_unmodified, e_unmodified)
-        #self.compareHistograms(histogram_R, histogram_R_unmodified, bin_edges, bin_edges_unmodified, "red", "black")
+        histogram_R, bin_edges, histogramPairValues, e0, OddIndexes0 = self.AnalyzeImage(self.image, 0)
+        self.PrintHistogramValues(histogram_R, e0, OddIndexes0)
+        result0 = self.ChiSquareTest(e0, OddIndexes0)
 
-        plt.show()
+        histogram_G, bin_edges, histogramPairValues, e1, OddIndexes1 = self.AnalyzeImage(self.image, 1)
+        self.PrintHistogramValues(histogram_G, e1, OddIndexes1)
+        result1 = self.ChiSquareTest(e1, OddIndexes1)
+
+        histogram_B, bin_edges, histogramPairValues, e2, OddIndexes2 = self.AnalyzeImage(self.image, 2)
+        self.PrintHistogramValues(histogram_B, e2, OddIndexes2)
+        result2 = self.ChiSquareTest(e2, OddIndexes2)
+
+        print("\n~~~~~~~~~~~~~~~~~~~~~~~~")    
+        print("Probability of data in red channel: ", result0)
+        print("Probability of data in green channel: ", result1)
+        print("Probability of data in blue channel: ", result2)
         print("~~~~~~~~~~~~~~~~~~~~~~~~")       
  
+    def Analyze2(self, nRowsToCheck):
+        print("\n~~~~~ Steganalyzer ~~~~~")
+        print("Commencing analysis (2)...")  
 
+        if(nRowsToCheck>self.image.shape[1]):
+            nRowsToCheck = self.image.shape[1]
 
+        print("nRowsToCheck: ", nRowsToCheck, "[", nRowsToCheck/self.image.shape[1]*100, "%]")
+
+        image2 = np.zeros([100,100,3],dtype=np.uint8)
+        image2 = self.image[0:nRowsToCheck,:,:]
+
+        plt.figure()
+        plt.imshow(cv.cvtColor(image2, cv.COLOR_BGR2RGB))
+        plt.show()
+
+        histogram_R, bin_edges, histogramPairValues, e0, OddIndexes0 = self.AnalyzeImage(image2, 0)
+        self.PrintHistogramValues(histogram_R, e0, OddIndexes0)
+        result0 = self.ChiSquareTest(e0, OddIndexes0)
+
+        histogram_G, bin_edges, histogramPairValues, e1, OddIndexes1 = self.AnalyzeImage(image2, 1)
+        self.PrintHistogramValues(histogram_G, e1, OddIndexes1)
+        result1 = self.ChiSquareTest(e1, OddIndexes1)
+
+        histogram_B, bin_edges, histogramPairValues, e2, OddIndexes2 = self.AnalyzeImage(image2, 2)
+        self.PrintHistogramValues(histogram_B, e2, OddIndexes2)
+        result2 = self.ChiSquareTest(e2, OddIndexes2)
+
+        print("\n~~~~~~~~~~~~~~~~~~~~~~~~")    
+        print("Probability of data in red channel: ", result0)
+        print("Probability of data in green channel: ", result1)
+        print("Probability of data in blue channel: ", result2)
+
+#messageToEncode = ""
 messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc quis ante sit amet erat porttitor luctus. Sed justo nulla, interdum ac elit eget, viverra elementum est. Quisque porta metus nisi, nec malesuada dolor suscipit id. Ut vehicula congue nulla, vitae mattis tortor sollicitudin pellentesque."
 #messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit."
 #messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit. Nam in dolor ac metus sodales tincidunt. Integer venenatis urna ligula, et mattis mauris aliquam quis. Donec sit amet nulla vel orci faucibus luctus. Pellentesque commodo nisi dolor, ut egestas elit venenatis ac. Aenean in felis viverra, interdum magna id, consectetur magna. Nullam mollis tincidunt nisi, sed blandit dui bibendum vitae. In suscipit, nisi sed gravida malesuada, nibh libero maximus dolor, non eleifend nisl elit a nisi. Praesent ac luctus tellus. Quisque imperdiet purus eget maximus feugiat. Curabitur sollicitudin rhoncus finibus. Aliquam vehicula tincidunt enim, in rutrum ipsum cursus ac. Nulla gravida dui eget augue fringilla, mollis gravida metus euismod."
 #messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit. Nam in dolor ac metus sodales tincidunt. Integer venenatis urna ligula, et mattis mauris aliquam quis. Donec sit amet nulla vel orci faucibus luctus. Pellentesque commodo nisi dolor, ut egestas elit venenatis ac. Aenean in felis viverra, interdum magna id, consectetur magna. Nullam mollis tincidunt nisi, sed blandit dui bibendum vitae. In suscipit, nisi sed gravida malesuada, nibh libero maximus dolor, non eleifend nisl elit a nisi. Praesent ac luctus tellus. Quisque imperdiet purus eget maximus feugiat. Curabitur sollicitudin rhoncus finibus. Aliquam vehicula tincidunt enim, in rutrum ipsum cursus ac. Nulla gravida dui eget augue fringilla, mollis gravida metus euismod. Donec vitae sapien non arcu viverra euismod. Nam dapibus ultricies leo sed mollis. Donec cursus risus arcu, sit amet faucibus leo pulvinar vitae. Nam commodo volutpat porttitor. Ut convallis hendrerit sapien, in laoreet justo rutrum sed. Duis a ligula et diam consectetur lacinia sagittis quis ipsum. Integer accumsan dolor urna, sed suscipit risus pharetra sed. Nullam cursus libero sed elit aliquet aliquet. Praesent non elementum ligula. Aenean in libero at odio tristique vulputate nec sed augue. Ut tellus enim, consequat eget hendrerit non, sagittis vel turpis. Aliquam ullamcorper rhoncus fermentum. In commodo sodales nibh et rhoncus. Maecenas at diam vestibulum arcu molestie rhoncus quis sed nunc. Aliquam blandit faucibus erat, et pulvinar neque suscipit at. Pellentesque erat elit, pellentesque id pharetra sed, laoreet non risus. Donec auctor euismod fringilla. Curabitur dapibus elit sollicitudin eros finibus feugiat et vehicula lectus. Nunc feugiat risus et tristique bibendum. Etiam porttitor, massa sed laoreet porttitor, nibh arcu vehicula felis, faucibus semper dolor augue non felis. Sed et diam fringilla, viverra ante vel, interdum tortor. Cras semper ipsum non purus tincidunt accumsan. Integer dui magna, feugiat at rutrum a, rhoncus sed nunc. In hac habitasse platea dictumst."
+#messageToEncode = messageToEncode + messageToEncode
+#messageToEncode = messageToEncode + messageToEncode + messageToEncode
 
 encoder = SteganographyEncoder()
-encoder.loadImage("images/forest_small.png")
+encoder.loadImage("images/beach.png")
 encoder.encodeMessage(messageToEncode)
 encoder.saveImage("images/saved.png")
 
@@ -391,11 +421,9 @@ decoder.loadImage("images/saved.png")
 decoder.printMessageIfAny()
 
 steganalyzer = Steganalyzer()
-
 steganalyzer.LoadImage("images/saved.png")
-steganalyzer.loadUnmodifiedImage("images/forest_small.png")
-steganalyzer.Analyze()
-
+#steganalyzer.Analyze()
+steganalyzer.Analyze2(200)
 
 #plt.figure()
 #plt.imshow(cv.cvtColor(encoder.image, cv.COLOR_BGR2RGB))
