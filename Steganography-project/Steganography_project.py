@@ -107,6 +107,8 @@ class SteganographyEncoder:
                             a = a & ~1
                             #self.printByte(a)
                             self.encodedImage[i,j,color] = a
+        if(counter < len(binaryMessageString)):
+            print("Warning: Message is not fully encoded.")
         
 class SteganographyDecoder:
 
@@ -116,8 +118,8 @@ class SteganographyDecoder:
     def loadImage(self, link):
         self.image = cv.imread(link, cv.IMREAD_COLOR)
 
-    def printMessageIfAny(self):     
-        filterOutWeirdSigns = 1 # filters characters that do not belong between 32 and 127 ASCII values (inclusive)
+        # argument 1: if true: filters characters that do not belong between 32 and 127 ASCII values (inclusive)
+    def decode(self, messageFilter):    
 
         hiddenBinaryMessage = ""
         
@@ -166,7 +168,7 @@ class SteganographyDecoder:
             else:
                 binaryChar = binaryChar + n     
         
-        if(filterOutWeirdSigns != 0):
+        if(messageFilter != 0):
             old = hiddenMessage
             hiddenMessage = ""
             for c in old:
@@ -175,7 +177,7 @@ class SteganographyDecoder:
                 else:
                     hiddenMessage = hiddenMessage + c
         print("\n~~~~~ Steganography Decoder ~~~~~")
-        print("Decoded message (characters): ")
+        print("Decoded message: ")
         print(hiddenMessage)  
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
@@ -200,10 +202,7 @@ class Steganalyzer:
 
     def getHistogram(self, image, color_channel_id):
         plt.xlim([0, 256])
-        print("color_channel_id: ", color_channel_id)
         histogram, bin_edges = np.histogram(image[:, :, color_channel_id], bins=256, range=(0, 256))
-        print("Hist: ")
-        print(histogram)
         return histogram, bin_edges
 
     def showHistogram(self, histogram, bin_edges, color):
@@ -222,7 +221,21 @@ class Steganalyzer:
         plt.xlabel("Color value")
         plt.ylabel("Pixels")
         plt.title("Histogram comparision")
-      
+  
+        # ? Prints out comparison of values needed for chi test
+    def printComparisionTable(self, OddIndexAverages, e, OddIndexAverages2, e2):
+        blankimage = np.zeros([100,100,3],dtype=np.uint8)
+        blankimage.fill(0) # or img[:] = 255
+        if(self.unmodifiedImageLink != ""):
+            print("________________________________________")
+            print("original image is loaded for comparision")
+            print("____|edited image   |   original image")
+            for i in range(len(e)):
+                print("["+ str(i) +"]: Odd: "+ str(OddIndexAverages[i]) +", e: "+  str(e[i]) + "   |   Odd: "+ str(OddIndexAverages2[i]) +", e: "+  str(e2[i]) + " ")
+        else:
+            for i in range(len(e)):
+                print("["+ str(i) +"]: Odd: "+ str(OddIndexAverages[i]) +", e: "+  str(e[i]))
+    
     def getHistogramPairValues(self, histogram):
         pairvalue=list()
         histogramPairValues = list()
@@ -254,21 +267,6 @@ class Steganalyzer:
                 oddIndexElements.append(elements[i])
         return oddIndexElements
 
-
-        # Prints out comparison of values needed for chi test
-    def printComparisionTable(self, OddIndexAverages, e, OddIndexAverages2, e2):
-        blankimage = np.zeros([100,100,3],dtype=np.uint8)
-        blankimage.fill(0) # or img[:] = 255
-        if(self.unmodifiedImageLink != ""):
-            print("________________________________________")
-            print("original image is loaded for comparision")
-            print("____|edited image   |   original image")
-            for i in range(len(e)):
-                print("["+ str(i) +"]: Odd: "+ str(OddIndexAverages[i]) +", e: "+  str(e[i]) + "   |   Odd: "+ str(OddIndexAverages2[i]) +", e: "+  str(e2[i]) + " ")
-        else:
-            for i in range(len(e)):
-                print("["+ str(i) +"]: Odd: "+ str(OddIndexAverages[i]) +", e: "+  str(e[i]))
-
     def AnalyzeImage(self, values, color):
         c=0
         if(color == 0 or color == 1 or color == 2):
@@ -286,21 +284,7 @@ class Steganalyzer:
     
     def ChiSquareTest(self, observed, expected):
 
-        print("\n---- chisquare ----")
-        print("Observed sum: ", np.sum(observed))
-        print("Expected sum: ", np.sum(expected))
-
-        diff = np.sum(observed) - np.sum(expected)
-        print("Diff: ", diff)
-
-        if(diff<0):
-            diff = -diff
-            observed[127] = observed[127] + diff;
-        elif(diff>0):
-            expected[127] = expected[127] + diff;
-
-        print("New observed sum: ", np.sum(observed))
-        print("New expected sum: ", np.sum(expected))
+        ## ↓ removing elements from arrays where 'expected' has zero ↓
 
         observed2 = []
         expected2 = []
@@ -317,6 +301,30 @@ class Steganalyzer:
         print("Observed2 sum: ", np.sum(observed2))
         print("Expected2 sum: ", np.sum(expected2))
 
+        ## ↑ removing elements from arrays where 'expected' has zero ↑
+
+        ## ↓ making sum of observed and expected equal ↓
+
+        ##---- ↓ spreading difference among all observed2 or expected2 equally ↓    -   možda čini stvar još gorom
+            #diff = np.sum(observed2) - np.sum(expected2)
+            #print("Diff: ", diff)
+
+            #lobs=len(observed2)
+            #lexp=len(expected2)
+
+
+
+            #if(diff<0):
+            #    diff = -diff
+            #    for x in range(len(observed2)-1):
+            #        observed2[x]=observed2[x] + diff/lobs
+
+            #elif(diff>0):
+            #     for x in range(len(expected2)-1):
+            #        expected2[x] = expected2[x] + diff/lexp
+
+        ##---- ↑ spreading difference among all observed2 or expected2 equally ↑
+
         diff = np.sum(observed2) - np.sum(expected2)
         print("Diff: ", diff)
         if(diff<0):
@@ -325,16 +333,13 @@ class Steganalyzer:
         elif(diff>0):
             expected2[len(expected2)-1] = expected2[len(expected2)-1] + diff;
 
+        #self.PrintHistogramValues([],expected2, observed2)
         print("New observed2 sum: ", np.sum(observed2))
         print("New expected2 sum: ", np.sum(expected2))
 
-        #try:
-        chi, p = sp.stats.chisquare(observed2, expected2, 0)            
-        print("ChiSquare test: p = ", p)
-        #except:
-        #    print("ValueError (chi-square); check observed and expected sums")
+        ## ↑ making sum of observed and expected equal ↑
 
-        print("---- --------- ----")
+        chi, p = sp.stats.chisquare(observed2, expected2, 0)            
         return p
 
     def PrintHistogramValues(self, histogram, e, OddIndexes):
@@ -346,31 +351,8 @@ class Steganalyzer:
         print("\n- OddIndexes -----------")
         print(OddIndexes[:])
         print("--------------------------")
-
-        #pair of values analysis
-    def Analyze(self):
-        print("\n~~~~~ Steganalyzer ~~~~~")
-        print("Commencing analysis...")  
-
-        histogram_R, bin_edges, histogramPairValues, e0, OddIndexes0 = self.AnalyzeImage(self.image, 0)
-        self.PrintHistogramValues(histogram_R, e0, OddIndexes0)
-        result0 = self.ChiSquareTest(e0, OddIndexes0)
-
-        histogram_G, bin_edges, histogramPairValues, e1, OddIndexes1 = self.AnalyzeImage(self.image, 1)
-        self.PrintHistogramValues(histogram_G, e1, OddIndexes1)
-        result1 = self.ChiSquareTest(e1, OddIndexes1)
-
-        histogram_B, bin_edges, histogramPairValues, e2, OddIndexes2 = self.AnalyzeImage(self.image, 2)
-        self.PrintHistogramValues(histogram_B, e2, OddIndexes2)
-        result2 = self.ChiSquareTest(e2, OddIndexes2)
-
-        print("\n~~~~~~~~~~~~~~~~~~~~~~~~")    
-        print("Probability of data in red channel: ", result0)
-        print("Probability of data in green channel: ", result1)
-        print("Probability of data in blue channel: ", result2)
-        print("~~~~~~~~~~~~~~~~~~~~~~~~")       
  
-    def Analyze2(self, nRowsToCheck):
+    def Analyze(self, nRowsToCheck):
         print("\n~~~~~ Steganalyzer ~~~~~")
         print("Commencing analysis (2)...")  
 
@@ -382,21 +364,21 @@ class Steganalyzer:
         image2 = np.zeros([100,100,3],dtype=np.uint8)
         image2 = self.image[0:nRowsToCheck,:,:]
 
-        plt.figure()
-        plt.imshow(cv.cvtColor(image2, cv.COLOR_BGR2RGB))
-        plt.show()
+        #plt.figure()
+        #plt.imshow(cv.cvtColor(image2, cv.COLOR_BGR2RGB))
+        #plt.show()
 
         histogram_R, bin_edges, histogramPairValues, e0, OddIndexes0 = self.AnalyzeImage(image2, 0)
-        self.PrintHistogramValues(histogram_R, e0, OddIndexes0)
-        result0 = self.ChiSquareTest(e0, OddIndexes0)
+        #self.PrintHistogramValues(histogram_R, e0, OddIndexes0)
+        result0 = self.ChiSquareTest(OddIndexes0, e0)
 
         histogram_G, bin_edges, histogramPairValues, e1, OddIndexes1 = self.AnalyzeImage(image2, 1)
-        self.PrintHistogramValues(histogram_G, e1, OddIndexes1)
-        result1 = self.ChiSquareTest(e1, OddIndexes1)
+        #self.PrintHistogramValues(histogram_G, e1, OddIndexes1)
+        result1 = self.ChiSquareTest(OddIndexes1, e1)
 
         histogram_B, bin_edges, histogramPairValues, e2, OddIndexes2 = self.AnalyzeImage(image2, 2)
-        self.PrintHistogramValues(histogram_B, e2, OddIndexes2)
-        result2 = self.ChiSquareTest(e2, OddIndexes2)
+        #self.PrintHistogramValues(histogram_B, e2, OddIndexes2)
+        result2 = self.ChiSquareTest(OddIndexes2, e2)
 
         print("\n~~~~~~~~~~~~~~~~~~~~~~~~")    
         print("Probability of data in red channel: ", result0)
@@ -404,12 +386,14 @@ class Steganalyzer:
         print("Probability of data in blue channel: ", result2)
 
 #messageToEncode = ""
-messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc quis ante sit amet erat porttitor luctus. Sed justo nulla, interdum ac elit eget, viverra elementum est. Quisque porta metus nisi, nec malesuada dolor suscipit id. Ut vehicula congue nulla, vitae mattis tortor sollicitudin pellentesque."
+#messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+#messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc quis ante sit amet erat porttitor luctus. Sed justo nulla, interdum ac elit eget, viverra elementum est. Quisque porta metus nisi, nec malesuada dolor suscipit id. Ut vehicula congue nulla, vitae mattis tortor sollicitudin pellentesque."
 #messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit."
 #messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit. Nam in dolor ac metus sodales tincidunt. Integer venenatis urna ligula, et mattis mauris aliquam quis. Donec sit amet nulla vel orci faucibus luctus. Pellentesque commodo nisi dolor, ut egestas elit venenatis ac. Aenean in felis viverra, interdum magna id, consectetur magna. Nullam mollis tincidunt nisi, sed blandit dui bibendum vitae. In suscipit, nisi sed gravida malesuada, nibh libero maximus dolor, non eleifend nisl elit a nisi. Praesent ac luctus tellus. Quisque imperdiet purus eget maximus feugiat. Curabitur sollicitudin rhoncus finibus. Aliquam vehicula tincidunt enim, in rutrum ipsum cursus ac. Nulla gravida dui eget augue fringilla, mollis gravida metus euismod."
-#messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit. Nam in dolor ac metus sodales tincidunt. Integer venenatis urna ligula, et mattis mauris aliquam quis. Donec sit amet nulla vel orci faucibus luctus. Pellentesque commodo nisi dolor, ut egestas elit venenatis ac. Aenean in felis viverra, interdum magna id, consectetur magna. Nullam mollis tincidunt nisi, sed blandit dui bibendum vitae. In suscipit, nisi sed gravida malesuada, nibh libero maximus dolor, non eleifend nisl elit a nisi. Praesent ac luctus tellus. Quisque imperdiet purus eget maximus feugiat. Curabitur sollicitudin rhoncus finibus. Aliquam vehicula tincidunt enim, in rutrum ipsum cursus ac. Nulla gravida dui eget augue fringilla, mollis gravida metus euismod. Donec vitae sapien non arcu viverra euismod. Nam dapibus ultricies leo sed mollis. Donec cursus risus arcu, sit amet faucibus leo pulvinar vitae. Nam commodo volutpat porttitor. Ut convallis hendrerit sapien, in laoreet justo rutrum sed. Duis a ligula et diam consectetur lacinia sagittis quis ipsum. Integer accumsan dolor urna, sed suscipit risus pharetra sed. Nullam cursus libero sed elit aliquet aliquet. Praesent non elementum ligula. Aenean in libero at odio tristique vulputate nec sed augue. Ut tellus enim, consequat eget hendrerit non, sagittis vel turpis. Aliquam ullamcorper rhoncus fermentum. In commodo sodales nibh et rhoncus. Maecenas at diam vestibulum arcu molestie rhoncus quis sed nunc. Aliquam blandit faucibus erat, et pulvinar neque suscipit at. Pellentesque erat elit, pellentesque id pharetra sed, laoreet non risus. Donec auctor euismod fringilla. Curabitur dapibus elit sollicitudin eros finibus feugiat et vehicula lectus. Nunc feugiat risus et tristique bibendum. Etiam porttitor, massa sed laoreet porttitor, nibh arcu vehicula felis, faucibus semper dolor augue non felis. Sed et diam fringilla, viverra ante vel, interdum tortor. Cras semper ipsum non purus tincidunt accumsan. Integer dui magna, feugiat at rutrum a, rhoncus sed nunc. In hac habitasse platea dictumst."
-#messageToEncode = messageToEncode + messageToEncode
+messageToEncode = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non lobortis neque, sed varius lacus. Etiam dapibus iaculis efficitur. Duis lectus nisl, tincidunt nec placerat sed, porta ac elit. Maecenas leo lacus, congue ac quam mattis, luctus vestibulum sem. Quisque eget nisi eu mi tempus dictum. Aenean eu suscipit felis, vitae porttitor mauris. Maecenas velit nunc, vulputate nec tristique vel, consequat in ipsum. Ut sed metus eget tellus bibendum laoreet quis ut sem. Vestibulum quis vestibulum sem. Curabitur condimentum augue vel eros sagittis ultricies. Vivamus ut est commodo, lacinia lorem non, mattis nunc. Curabitur mattis tortor lobortis vehicula ultricies. Aenean tortor lorem, venenatis nec sollicitudin non, scelerisque ac erat. Mauris iaculis eleifend neque. Ut vitae laoreet eros. Donec fringilla enim eu arcu aliquet fermentum. Donec malesuada sollicitudin nisl non faucibus. Sed eleifend vulputate vehicula. Ut et lorem tempor, porta arcu vitae, egestas nunc. Integer tempus vitae nulla vitae blandit. Nam in dolor ac metus sodales tincidunt. Integer venenatis urna ligula, et mattis mauris aliquam quis. Donec sit amet nulla vel orci faucibus luctus. Pellentesque commodo nisi dolor, ut egestas elit venenatis ac. Aenean in felis viverra, interdum magna id, consectetur magna. Nullam mollis tincidunt nisi, sed blandit dui bibendum vitae. In suscipit, nisi sed gravida malesuada, nibh libero maximus dolor, non eleifend nisl elit a nisi. Praesent ac luctus tellus. Quisque imperdiet purus eget maximus feugiat. Curabitur sollicitudin rhoncus finibus. Aliquam vehicula tincidunt enim, in rutrum ipsum cursus ac. Nulla gravida dui eget augue fringilla, mollis gravida metus euismod. Donec vitae sapien non arcu viverra euismod. Nam dapibus ultricies leo sed mollis. Donec cursus risus arcu, sit amet faucibus leo pulvinar vitae. Nam commodo volutpat porttitor. Ut convallis hendrerit sapien, in laoreet justo rutrum sed. Duis a ligula et diam consectetur lacinia sagittis quis ipsum. Integer accumsan dolor urna, sed suscipit risus pharetra sed. Nullam cursus libero sed elit aliquet aliquet. Praesent non elementum ligula. Aenean in libero at odio tristique vulputate nec sed augue. Ut tellus enim, consequat eget hendrerit non, sagittis vel turpis. Aliquam ullamcorper rhoncus fermentum. In commodo sodales nibh et rhoncus. Maecenas at diam vestibulum arcu molestie rhoncus quis sed nunc. Aliquam blandit faucibus erat, et pulvinar neque suscipit at. Pellentesque erat elit, pellentesque id pharetra sed, laoreet non risus. Donec auctor euismod fringilla. Curabitur dapibus elit sollicitudin eros finibus feugiat et vehicula lectus. Nunc feugiat risus et tristique bibendum. Etiam porttitor, massa sed laoreet porttitor, nibh arcu vehicula felis, faucibus semper dolor augue non felis. Sed et diam fringilla, viverra ante vel, interdum tortor. Cras semper ipsum non purus tincidunt accumsan. Integer dui magna, feugiat at rutrum a, rhoncus sed nunc. In hac habitasse platea dictumst."
 #messageToEncode = messageToEncode + messageToEncode + messageToEncode
+#messageToEncode = messageToEncode + messageToEncode
+#messageToEncode = messageToEncode + messageToEncode
 
 encoder = SteganographyEncoder()
 encoder.loadImage("images/beach.png")
@@ -418,12 +402,19 @@ encoder.saveImage("images/saved.png")
 
 decoder = SteganographyDecoder()
 decoder.loadImage("images/saved.png")
-decoder.printMessageIfAny()
+decoder.decode(1)
 
+print("**************************************")
+print("***** Edited image steganalysis: *****")
 steganalyzer = Steganalyzer()
 steganalyzer.LoadImage("images/saved.png")
-#steganalyzer.Analyze()
-steganalyzer.Analyze2(200)
+steganalyzer.Analyze(256)
+
+print("****************************************")
+print("***** Unedited image steganalysis: *****")
+steganalyzer.LoadImage("images/beach.png")
+steganalyzer.Analyze(256)
+print("****************************************")
 
 #plt.figure()
 #plt.imshow(cv.cvtColor(encoder.image, cv.COLOR_BGR2RGB))
